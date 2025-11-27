@@ -80,6 +80,20 @@ app.get('/cars/:id', async (req, res) => {
 });
 
 
+
+app.get('/cars/user/:email', async (req, res) => {
+    try {
+        const email = req.params.email;
+        const query = { userEmail: email };
+        const result = await carCollection.find(query).toArray();
+        res.json(result);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Error fetching user's cars" });
+    }
+});
+
+
 app.post('/cars', async (req, res) => {
     try {
         const vehicle = req.body;
@@ -89,6 +103,45 @@ app.post('/cars', async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: "Error inserting data" });
+    }
+});
+
+
+app.put('/cars/:id', async (req, res) => {
+    try {
+        const id = req.params.id;
+        if (!ObjectId.isValid(id)) {
+            return res.status(400).json({ error: "Invalid ID format" });
+        }
+        const updatedData = req.body;
+        const filter = { _id: new ObjectId(id) };
+        const updateDoc = { $set: updatedData };
+        const result = await carCollection.updateOne(filter, updateDoc);
+        if (result.matchedCount === 0) {
+            return res.status(404).json({ error: "Car not found" });
+        }
+        res.json(result);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Server error while updating car" });
+    }
+});
+
+app.delete('/cars/:id', async (req, res) => {
+    try {
+        const id = req.params.id;
+        if (!ObjectId.isValid(id)) {
+            return res.status(400).json({ error: "Invalid ID format" });
+        }
+        const query = { _id: new ObjectId(id) };
+        const result = await carCollection.deleteOne(query);
+        if (result.deletedCount === 0) {
+            return res.status(404).json({ error: "Car not found" });
+        }
+        res.json({ message: 'Car deleted successfully' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Server error while deleting car" });
     }
 });
 
