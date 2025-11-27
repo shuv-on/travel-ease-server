@@ -1,14 +1,14 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 const app = express();
 const port = process.env.PORT || 3000;
 
 // middleware
 app.use(cors({
-    origin: ["http://localhost:5173", "https://travel-ease-server-self.vercel.app", "*"], 
+    origin: ["http://localhost:5173", "https://travel-ease-client-self.vercel.app"], 
     credentials: true
 }));
 app.use(express.json());
@@ -23,20 +23,19 @@ const client = new MongoClient(uri, {
     }
 });
 
-
 const db = client.db("travel-ease");
 const carCollection = db.collection("cars");
-
 
 async function connectDB() {
     try {
         await client.connect();
         console.log("Connected to MongoDB!");
+        return true;
     } catch (error) {
         console.error("MongoDB Connection Error:", error);
+        return false;
     }
 }
-connectDB();
 
 
 app.get('/', (req, res) => {
@@ -53,10 +52,29 @@ app.get('/cars', async (req, res) => {
         } else {
             result = await carCollection.find().toArray();
         }
-        res.send(result);
+        res.json(result); 
     } catch (error) {
         console.error(error);
-        res.status(500).send("Internal Server Error");
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
+
+app.get('/cars/:id', async (req, res) => {
+    try {
+        const id = req.params.id;
+        if (!ObjectId.isValid(id)) {
+            return res.status(400).json({ error: "Invalid ID format" });
+        }
+        const query = { _id: new ObjectId(id) };
+        const result = await carCollection.findOne(query);
+        if (!result) {
+            return res.status(404).json({ error: "Car not found" });
+        }
+        res.json(result);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Server error while fetching car" });
     }
 });
 
@@ -66,18 +84,27 @@ app.post('/cars', async (req, res) => {
         const vehicle = req.body;
         console.log("Data received:", vehicle);
         const result = await carCollection.insertOne(vehicle);
-        res.send(result);
+        res.json(result); 
     } catch (error) {
         console.error(error);
-        res.status(500).send("Error inserting data");
+        res.status(500).json({ error: "Error inserting data" });
     }
 });
 
-
-if (process.env.NODE_ENV !== 'production') {
-    app.listen(port, () => {
-        console.log(`Server running on port: ${port}`);
-    });
+async function startServer() {
+    const connected = await connectDB();
+    if (connected) {
+        if (process.env.NODE_ENV !== 'production') {
+            app.listen(port, () => {
+                console.log(`Server running on port: ${port}`);
+            });
+        }
+       
+    } else {
+        console.error("Failed to start server due to DB connection issue.");
+    }
 }
+
+startServer();
 
 module.exports = app;
