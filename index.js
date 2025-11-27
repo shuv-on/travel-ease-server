@@ -25,6 +25,7 @@ const client = new MongoClient(uri, {
 
 const db = client.db("travel-ease");
 const carCollection = db.collection("cars");
+const bookingsCollection = db.collection("bookings");
 
 async function connectDB() {
     try {
@@ -52,7 +53,7 @@ app.get('/cars', async (req, res) => {
         } else {
             result = await carCollection.find().toArray();
         }
-        res.json(result); 
+        res.json(result);
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: "Internal Server Error" });
@@ -84,12 +85,45 @@ app.post('/cars', async (req, res) => {
         const vehicle = req.body;
         console.log("Data received:", vehicle);
         const result = await carCollection.insertOne(vehicle);
-        res.json(result); 
+        res.json(result);
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: "Error inserting data" });
     }
 });
+
+app.post('/bookings', async (req, res) => {
+    try {
+        const booking = req.body;
+        console.log("Booking data received:", booking);
+        const result = await bookingsCollection.insertOne(booking);
+        if (result.insertedId) {
+            res.json({ insertedId: result.insertedId, message: 'Booking created successfully' });
+        } else {
+            res.status(400).json({ error: 'Failed to create booking' });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Error creating booking' });
+    }
+});
+
+
+app.get('/bookings', async (req, res) => {
+    try {
+        const email = req.query.email;
+        if (!email) {
+            return res.status(400).json({ error: 'Email parameter is required' });
+        }
+        const query = { userEmail: email };
+        const result = await bookingsCollection.find(query).sort({ bookingDate: -1 }).toArray();
+        res.json(result);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Error fetching bookings' });
+    }
+});
+
 
 async function startServer() {
     const connected = await connectDB();
@@ -99,7 +133,7 @@ async function startServer() {
                 console.log(`Server running on port: ${port}`);
             });
         }
-       
+        
     } else {
         console.error("Failed to start server due to DB connection issue.");
     }
