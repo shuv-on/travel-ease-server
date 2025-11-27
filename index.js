@@ -113,16 +113,35 @@ app.put('/cars/:id', async (req, res) => {
         if (!ObjectId.isValid(id)) {
             return res.status(400).json({ error: "Invalid ID format" });
         }
-        const updatedData = req.body;
+        let updatedData = req.body;
+        
+       
+        delete updatedData._id;
+        
+        
+        if (updatedData.availability !== undefined) {
+            updatedData.availability = Boolean(updatedData.availability);
+        }
+        
+        
+        if (updatedData.pricePerDay !== undefined) {
+            updatedData.pricePerDay = parseFloat(updatedData.pricePerDay);
+        }
+        
         const filter = { _id: new ObjectId(id) };
         const updateDoc = { $set: updatedData };
         const result = await carCollection.updateOne(filter, updateDoc);
+        
         if (result.matchedCount === 0) {
             return res.status(404).json({ error: "Car not found" });
         }
-        res.json(result);
+        
+
+        const updatedCar = await carCollection.findOne({ _id: new ObjectId(id) });
+        res.json({ ...result, updatedCar });
+        
     } catch (error) {
-        console.error(error);
+        console.error("Update Error:", error);
         res.status(500).json({ error: "Server error while updating car" });
     }
 });
